@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Alerts · LeakLens</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@300;600;800&family=Outfit:wght@300;400;600&family=Space+Mono:wght@400;700&display=swap">
+<link rel="stylesheet" href="assets/css/style.css">
+</head><body data-page="alerts">
+<div id="bar"></div>
+<nav><span class="logo hd">LEAK<b>LENS</b></span><div class="links" id="lk"></div><span class="live">● LIVE</span></nav><div id="toast"></div>
+<div class="fx" id="sky"></div><div class="fx" id="glow"></div><div class="fx" id="ring"></div><div class="fx" id="ds"></div>
+<div class="fx lay" id="l1" style="opacity:.8"></div><div class="fx lay" id="l2"></div>
+<div class="fx rfw"><div class="rf" id="r1"></div></div><div class="fx rfw"><div class="rf" id="r2" style="opacity:.5"></div></div>
+<div class="fx" id="wat"></div><div class="fx" id="fog"></div><div class="fx lay" id="l3"></div><div class="fx" id="scan"></div><div class="fx" id="pt"></div><div class="fx" id="sh"></div>
+<div class="fx vig"></div><div class="fx grain"></div>
+<main>
+<section id="s4"><span class="eye rv">04 · Alerts</span><h2 class="hd rv">Why was it flagged?</h2><p class="lead rv">Every alert shows its score, its reasons and the events around it.</p>
+<div class="panel"><div class="bar"><input id="aq" placeholder="Search alert, device or destination…" aria-label="Search alerts"><select id="asv" aria-label="Severity"><option value="">All severity</option><option>High</option><option>Medium</option></select></div>
+<div class="two"><div class="tw"><table><thead><tr><th>Alert</th><th>Time</th><th>Flow</th><th>Risk</th><th>Severity</th></tr></thead><tbody id="alist"></tbody></table></div><div class="pd" id="adet"></div></div></div></section>
+</main><footer><div class="pager" id="pg"></div>LeakLens · prototype with sample data</footer>
+<script src="assets/js/device-risk-sample-data.js"></script>
+<script src="assets/js/device-risk-data.js"></script>
+<script src="assets/js/device-risk-engine.js"></script>
+<script src="assets/js/device-response.js"></script>
+<script src="assets/js/device-risk-ui.js"></script>
+<script src="assets/js/techtext.js"></script>
+<script src="assets/js/app.js"></script>
+</body></html>
