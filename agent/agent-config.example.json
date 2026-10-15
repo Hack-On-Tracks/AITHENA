@@ -1,0 +1,11 @@
+{
+  "serverUrl": "https://ADMIN-HOST-OR-IP:8443",
+  "deviceId": "DEV-001",
+  "agentSecret": "agt_REPLACE_WITH_SECRET_FROM_ENROLLMENT",
+  "label": "My-Laptop",
+  "intervalSec": 10,
+  "consent": false,
+  "caCertPath": "./aithena-ca.pem",
+  "allowSelfSigned": false,
+  "deleteConfigOnUninstall": true
+}

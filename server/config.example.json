@@ -1,0 +1,14 @@
+{
+  "port": 8443,
+  "host": "0.0.0.0",
+  "adminToken": "REPLACE-WITH-A-LONG-RANDOM-TOKEN",
+  "tlsKey": "server/tls/key.pem",
+  "tlsCert": "server/tls/cert.pem",
+  "persistPath": "server/data/registry.json",
+  "maxFlowsPerDevice": 2000,
+  "retentionMs": 21600000,
+  "liveMs": 30000,
+  "staleMs": 120000,
+  "maxBodyBytes": 524288,
+  "allowOrigins": null
+}

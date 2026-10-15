@@ -1,1 +1,4 @@
 .vercel
+agent-config.*.json
+!agent-config.example.json
+*.log

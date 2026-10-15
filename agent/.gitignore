@@ -1,0 +1,3 @@
+# Generated per-device configs hold secrets — never commit
+agent-config.*.json
+!agent-config.example.json

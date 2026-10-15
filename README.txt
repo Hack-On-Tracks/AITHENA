@@ -86,3 +86,27 @@ Adaptive Device Risk Detection & Response Module
    - "Run Network-Change-Only" (Criterion a): Demonstrates that network transition alone stays Low/Medium and never reaches Critical.
    - "Run Telemetry Gap" (Criterion d): Marks VPN telemetry missing. Confirms confidence drops to Low while score is not deducted.
    - "Reset Demo State": Clears injected events and restores baseline state.
+
+--------------------------------------------------------------------------------
+Live Multi-Laptop Monitoring (centralized admin server) — NEW
+--------------------------------------------------------------------------------
+The UI can now show LIVE telemetry from multiple AUTHORIZED laptops, each running a
+consent-gated agent that reports only its own outbound connection metadata to one
+admin server. DEMO (simulated) and LIVE (real) data are kept strictly separate via
+the Live bar at the bottom of every page.
+
+  Quick start:
+    export AITHENA_ADMIN_TOKEN="$(node -e "console.log(require('crypto').randomBytes(24).toString('hex'))")"
+    node server/aithena-server.js
+    node agent/enroll.js --server http://localhost:8443 --label "Laptop-1" --out ./agent-config.1.json
+    # set "consent": true in agent-config.1.json, then on that laptop:
+    node agent/aithena-agent.js --config ./agent-config.1.json
+    # open http://localhost:8443/dashboard.html -> Live bar -> Connection -> go Live
+
+  Tests:   node tests/live-telemetry.test.js
+  Full guide, Windows + TLS/VPN + acceptance test:  see LIVE-SETUP.md
+
+New files: server/ (admin server + libs), agent/ (agent + enroll helper),
+assets/js/live-client.js, tests/live-telemetry.test.js. Original prototype is
+unchanged except each page also loads live-client.js and style.css has an appended
+live-layer section.
