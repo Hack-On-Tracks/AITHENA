@@ -169,8 +169,39 @@
       });
     }
 
-    const allSignals = netS.concat(flowS, idS, missingSignals);
+    const transferSignals = Engine.detectTransferAnomalies(device, events, config);
+    const allSignals = netS.concat(flowS, idS, missingSignals, transferSignals);
     return Engine.scoreDevice(device, allSignals, config);
+  }
+
+  function ingestSimulationTransfer(event) {
+    if (!event || event.type !== 'transfer' || event.provenance !== 'SIMULATED' || !event.sourceDeviceId) {
+      throw new Error('Only explicitly SIMULATED transfer events can enter the device-risk pipeline.');
+    }
+    addStoredEvents(event.sourceDeviceId, [event]);
+  }
+
+  function evaluateSimulationDevice(deviceId) {
+    const identities = {
+      'DEV-001': { assignedUser: 'Emil', department: 'Admin', trustedNetworks: ['corp_wifi', 'vpn'] },
+      'DEV-002': { assignedUser: 'Manasvi', department: 'Employer', trustedNetworks: ['corp_wifi'] },
+      'DEV-003': { assignedUser: 'Sameera', department: 'Insider', trustedNetworks: ['home'] },
+      'DEV-004': { assignedUser: 'Keona', department: 'Outsider', trustedNetworks: [] }
+    };
+    const identity = identities[deviceId];
+    if (!identity) throw new Error(`Unknown simulation device: ${deviceId}`);
+    const device = Object.assign({ deviceId, status: 'active' }, identity);
+    if (!Engine) throw new Error('Device risk engine is unavailable.');
+
+    return evaluateDevice(device);
+  }
+
+  function resetSimulationEvents() {
+    const map = getStoredEvents();
+    Object.keys(map).forEach(deviceId => {
+      map[deviceId] = (map[deviceId] || []).filter(event => event.provenance !== 'SIMULATED');
+    });
+    saveStoredEvents(map);
   }
 
   // ---------------- PAGE: Dashboard ----------------
@@ -877,6 +908,10 @@
     init,
     seedSampleDataIfNeeded,
     evaluateDevice,
+    getConfig: getSavedConfig,
+    ingestSimulationTransfer,
+    evaluateSimulationDevice,
+    resetSimulationEvents,
     renderDashboard,
     renderTraffic,
     renderAlerts,

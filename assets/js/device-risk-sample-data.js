@@ -12,10 +12,10 @@
   const now = Date.now();
 
   const devices = [
-    { deviceId: 'DEV-001', assignedUser: 'Alice', department: 'Finance', status: 'reported_stolen', trustedNetworks: ['corp_wifi', 'vpn'] },
-    { deviceId: 'DEV-002', assignedUser: 'Bob', department: 'Engineering', status: 'active', trustedNetworks: ['corp_wifi'] },
-    { deviceId: 'DEV-003', assignedUser: 'Carol', department: 'HR', status: 'active', trustedNetworks: ['home'] },
-    { deviceId: 'DEV-004', assignedUser: 'Dave', department: 'Ops', status: 'active', trustedNetworks: ['corp_wifi', 'vpn'] }
+    { deviceId: 'DEV-001', assignedUser: 'Emil', department: 'Admin', status: 'reported_stolen', trustedNetworks: ['corp_wifi', 'vpn'] },
+    { deviceId: 'DEV-002', assignedUser: 'Manasvi', department: 'Employer', status: 'active', trustedNetworks: ['corp_wifi'] },
+    { deviceId: 'DEV-003', assignedUser: 'Sameera', department: 'Insider', status: 'active', trustedNetworks: ['home'] },
+    { deviceId: 'DEV-004', assignedUser: 'Keona', department: 'Outsider', status: 'active', trustedNetworks: ['corp_wifi', 'vpn'] }
   ];
 
   const flows = [

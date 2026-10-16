@@ -1,5 +1,5 @@
 // Device Risk Engine Tests (plain Node, no framework)
-const {detectNetworkChanges, analyseFlows, correlateIdentity, scoreDevice, DEFAULT_CONFIG} = require('../assets/js/device-risk-engine');
+const {detectNetworkChanges, analyseFlows, correlateIdentity, detectTransferAnomalies, scoreDevice, DEFAULT_CONFIG} = require('../assets/js/device-risk-engine');
 const Data = require('../assets/js/device-risk-data');
 
 function assert(cond, msg) { if (!cond) throw new Error('Assertion failed: '+msg); }
@@ -44,13 +44,29 @@ function run(){
   const points=scoreE.contributions.reduce((a,c)=>a+c.points,0);
   assert(points<=30,'e) Duplicate signals added too many points');
   console.log('e) passed');
-  // f) weight change affects score
+  // f) simulated insider transfers accumulate risk and remain provenance-gated
+  const transfers=[
+    {type:'transfer',sourceDeviceId:'DEV-003',destinationDeviceId:'DEV-004',ts:1000,bytes:970000,provenance:'SIMULATED'},
+    {type:'transfer',sourceDeviceId:'DEV-003',destinationDeviceId:'DEV-004',ts:2000,bytes:1490000,provenance:'SIMULATED'},
+    {type:'transfer',sourceDeviceId:'DEV-003',destinationDeviceId:'DEV-004',ts:3000,bytes:2010000,provenance:'SIMULATED'}
+  ];
+  const insider={deviceId:'DEV-003',trustedNetworks:['home']};
+  const first=scoreDevice(insider,detectTransferAnomalies(insider,transfers.slice(0,1)));
+  const second=scoreDevice(insider,detectTransferAnomalies(insider,transfers.slice(0,2)));
+  const thirdSignals=detectTransferAnomalies(insider,transfers);
+  const third=scoreDevice(insider,thirdSignals);
+  assert(second.score>first.score && third.score>second.score,'f) Transfer risk did not accumulate');
+  assert(thirdSignals.some(s=>s.signal==='repeated_insider_transfer'),'f) Repeated transfer rule did not fire');
+  assert(third.severity==='High' || third.severity==='Critical','f) Accumulated transfer risk did not reach High');
+  assert(detectTransferAnomalies(insider,transfers.map(e=>Object.assign({},e,{provenance:'observed'}))).length===0,'f) Non-simulated transfer was treated as simulation evidence');
+  console.log('f) passed');
+  // g) weight change affects score
   const cfg=JSON.parse(JSON.stringify(DEFAULT_CONFIG));
   cfg.weights.traffic=0.8;
   const scoreF1=scoreDevice(device,flowSignals,DEFAULT_CONFIG);
   const scoreF2=scoreDevice(device,flowSignals,cfg);
-  assert(scoreF2.score>scoreF1.score,'f) Increased weight did not raise score');
-  console.log('f) passed');
+  assert(scoreF2.score>scoreF1.score,'g) Increased weight did not raise score');
+  console.log('g) passed');
   console.log('All tests passed');
 }
 run();

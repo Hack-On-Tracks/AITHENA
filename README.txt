@@ -22,6 +22,24 @@ false positives and allowlists are kept in sessionStorage, so they carry over be
 To connect a real backend, replace the mk() event generator and the setInterval stream with fetch() calls to your API.
 
 --------------------------------------------------------------------------------
+Isolated Insider Data-Transfer Simulation
+--------------------------------------------------------------------------------
+
+Open graph.html and use "Start Simulation" to generate labeled SIMULATED transfer
+events in the Knowledge Graph. The stream animates DEV-003 (Sameera, Insider)
+transfers to DEV-004 (Keona, Outsider), mixed with normal background transfers.
+Pause stops generation, Start resumes a paused stream, and Reset clears only the
+simulation events and returns the graph risk scores to their baseline.
+
+To serve the project locally, run `node local-server.js` from the project folder
+and open http://localhost:8080/graph.html. The simulation is browser-only: it
+does not open network connections, inspect files, or collect device telemetry.
+Its anomaly thresholds are defined in
+`assets/js/device-risk-engine.js` under `DEFAULT_CONFIG.transferDetection`.
+Run the checks with `node tests/device-risk.test.js` and
+`node tests/transfer-simulation.test.js`.
+
+--------------------------------------------------------------------------------
 Adaptive Device Risk Detection & Response Module
 --------------------------------------------------------------------------------
 

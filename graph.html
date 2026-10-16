@@ -14,10 +14,23 @@
 <div class="fx vig"></div><div class="fx grain"></div>
 <main>
 <section id="s3"><span class="eye rv">03 · Knowledge graph</span><h2 class="hd rv">Follow the story</h2><p class="lead rv">Click a node. Red dashed links are suspicious.</p>
-<div class="panel"><div class="gr"><div><svg id="g" viewBox="0 0 640 400"></svg><div class="lg"><span>🟦 Device</span><span>⚪ Event</span><span>🟩 Destination</span><span>🔴 Alert</span><span>🟣 Incident</span></div>
+<div class="panel"><div id="transfer-controls" class="sim-controls" aria-label="Simulated transfer controls">
+<span class="dr-label-sim">SIMULATED ONLY · NO NETWORK TRAFFIC</span>
+<button type="button" class="sim-button sim-primary" data-sim-start>Start Simulation</button>
+<button type="button" class="sim-button" data-sim-pause disabled>Pause Simulation</button>
+<button type="button" class="sim-button" data-sim-reset>Reset Simulation</button>
+</div>
+<div class="gr"><div><svg id="g" viewBox="0 0 640 400"></svg><div class="lg"><span>🟦 Device</span><span>⚪ Event</span><span>🟩 Destination</span><span>🔴 Alert</span><span>🟣 Incident</span><span class="dr-label-sim">SIMULATED transfer</span></div>
 <div class="sl"><label for="ts">Window</label><input type="range" id="ts" min="1" max="24" value="24"><span id="tl">24 h</span></div></div>
-<div class="c" id="dt"><h3>Details</h3><p style="color:var(--mu);margin:0">Select a node to investigate.</p></div></div></div></section>
+<div class="c" id="dt"><h3>Details</h3><p style="color:var(--mu);margin:0">Select a node to investigate.</p></div></div>
+<div class="sim-feed-wrap"><h3>Chronological simulated transfer feed</h3><div class="sim-feed-head"><span>Source → Destination · Timestamp</span><span>Size · Protocol</span><span>Risk · Status</span><span>Detection reason</span></div><div id="transfer-feed" class="sim-feed" aria-live="polite"></div></div>
+</div></section>
 </main><footer><div class="pager" id="pg"></div>LeakLens · prototype with sample data</footer>
+<script src="assets/js/device-risk-sample-data.js"></script>
+<script src="assets/js/device-risk-data.js"></script>
+<script src="assets/js/device-risk-engine.js"></script>
+<script src="assets/js/device-risk-ui.js"></script>
+<script src="assets/js/transfer-simulation.js"></script>
 <script src="assets/js/techtext.js"></script>
 <script src="assets/js/app.js"></script>
 <script src="assets/js/live-client.js"></script>

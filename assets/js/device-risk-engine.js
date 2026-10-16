@@ -24,6 +24,13 @@
       high: 15,
       critical: 30
     },
+    transferDetection: {
+      unusualOutboundBytes: 1048576,
+      repeatedTransferCount: 3,
+      burstTransferCount: 4,
+      windowMs: 60000,
+      outsiderDeviceId: 'DEV-004'
+    },
     // correlation damping factor for additional signals in same group
     damping: 0.3,
     // bonus for corroborating groups (0-1)
@@ -112,6 +119,61 @@
     return signals;
   }
 
+  function detectTransferAnomalies(device, events, config = DEFAULT_CONFIG) {
+    const rules = config.transferDetection || DEFAULT_CONFIG.transferDetection;
+    const transfers = events
+      .filter(e => e.type === 'transfer' && e.sourceDeviceId === device.deviceId && e.provenance === 'SIMULATED')
+      .sort((a, b) => a.ts - b.ts);
+    const signals = [];
+
+    transfers.forEach(event => {
+      const recent = transfers.filter(candidate =>
+        candidate.ts <= event.ts && event.ts - candidate.ts <= rules.windowMs
+      );
+      if (event.bytes >= rules.unusualOutboundBytes) {
+        signals.push({
+          signal: 'unusual_outbound_transfer',
+          group: 'traffic',
+          confidence: 'Medium',
+          description: `Simulated outbound volume ${event.bytes} bytes exceeds the configured threshold`,
+          timestamp: event.ts,
+          provenance: 'SIMULATED'
+        });
+      }
+      if (event.destinationDeviceId === rules.outsiderDeviceId) {
+        signals.push({
+          signal: 'unexpected_destination',
+          group: 'network',
+          confidence: 'High',
+          description: `Simulated transfer to unexpected outsider device ${event.destinationDeviceId}`,
+          timestamp: event.ts,
+          provenance: 'SIMULATED'
+        });
+      }
+      if (recent.filter(candidate => candidate.destinationDeviceId === event.destinationDeviceId).length >= rules.repeatedTransferCount) {
+        signals.push({
+          signal: 'repeated_insider_transfer',
+          group: 'traffic',
+          confidence: 'High',
+          description: `Repeated simulated transfers to ${event.destinationDeviceId} within ${Math.round(rules.windowMs / 1000)} seconds`,
+          timestamp: event.ts,
+          provenance: 'SIMULATED'
+        });
+      }
+      if (recent.length >= rules.burstTransferCount) {
+        signals.push({
+          signal: 'transfer_burst',
+          group: 'traffic',
+          confidence: 'High',
+          description: `${recent.length} simulated transfers within ${Math.round(rules.windowMs / 1000)} seconds`,
+          timestamp: event.ts,
+          provenance: 'SIMULATED'
+        });
+      }
+    });
+    return signals;
+  }
+
   // 3. Identity correlation
   function correlateIdentity(device, authEvents, statusEvents) {
     const signals = [];
@@ -163,22 +225,24 @@
         unknowns.push(sig.group);
         return;
       }
-      const cur = groups[sig.group];
-      if (!cur || sig.confidence === 'High') {
-        groups[sig.group] = sig; // keep highest confidence (simplified)
-      }
+      if (!groups[sig.group]) groups[sig.group] = [];
+      groups[sig.group].push(sig);
     });
 
     // compute raw score via weighted sum of points (assign 30 points per high, 20 medium, 10 low)
     const pointMap = { High: 30, Medium: 20, Low: 10 };
     let rawScore = 0;
     const contributions = [];
-    Object.entries(groups).forEach(([group, sig]) => {
+    Object.entries(groups).forEach(([group, groupSignals]) => {
       const weight = config.weights[group] || 0;
-      const basePoints = pointMap[sig.confidence] || 0;
-      const points = weight * basePoints;
-      rawScore += points;
-      contributions.push({ signal: sig.signal, group, points: Math.round(points), reason: sig.description });
+      const ranked = groupSignals.slice().sort((a, b) => (pointMap[b.confidence] || 0) - (pointMap[a.confidence] || 0));
+      let groupPoints = 0;
+      ranked.forEach((sig, index) => {
+        const points = weight * (pointMap[sig.confidence] || 0) * (index === 0 ? 1 : config.damping);
+        groupPoints += points;
+        contributions.push({ signal: sig.signal, group, points: Math.round(points), reason: sig.description });
+      });
+      rawScore += groupPoints;
     });
 
     // corroboration bonus: if >=2 groups present, add bonus
@@ -216,6 +280,7 @@
     DEFAULT_CONFIG,
     detectNetworkChanges,
     analyseFlows,
+    detectTransferAnomalies,
     correlateIdentity,
     scoreDevice
   };

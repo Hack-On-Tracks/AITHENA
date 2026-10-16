@@ -49,7 +49,7 @@ function tbl(fresh){if(!$("#rw"))return;const q=$("#q").value.toLowerCase(),r=$(
 $("#rw").innerHTML=f.slice(0,30).map(e=>`<tr class="${e.risk} ${e.id==fresh?"new":""}"><td>${fa(e)}</td><td>${e.d}</td><td>${e.t}</td><td>${e.mb} MB</td><td>${Math.floor(e.dur/60)}m ${e.dur%60}s</td><td>${bg(e.risk)}</td></tr>`).join("")||`<tr><td colspan="6">No matching events</td></tr>`;$("#cn").textContent=f.length+" events match"}
 ["#q","#rkf","#tm"].forEach(s=>$(s)&&$(s).addEventListener("input",()=>tbl()));
 const col={device:"#5b8cff",event:"#dbe6f7",dest:"#3ee08f",alert:"#ff5a6e",incident:"#9db6dc"};let N=[],E=[],sel=null,gl=[];
-function gbuild(){if(!$("#g"))return;if(window.AithenaLive&&AithenaLive.isLive&&AithenaLive.isLive())return;const w=+$("#ts").value;$("#tl").textContent=w+" h";N=[];E=[];
+function gbuild(){if(!$("#g"))return;const w=+$("#ts").value;$("#tl").textContent=w+" h";if(window.lldrRenderTransferGraph){window.lldrRenderTransferGraph(w);return}if(window.AithenaLive&&AithenaLive.isLive&&AithenaLive.isLive())return;N=[];E=[];
 D.forEach((d,i)=>N.push({id:d,k:"device",x:60,y:60+i*95,i:{Type:"Device",Flows:ev.filter(e=>e.d==d).length}}));
 T.forEach((d,i)=>N.push({id:d,k:"dest",x:580,y:30+i*57,i:{Type:"External destination",Used_by:new Set(ev.filter(e=>e.t==d).map(e=>e.d)).size+" device(s)"}}));
 const se=ev.filter(e=>e.risk!="normal"&&age(e)<=w).slice(0,6);

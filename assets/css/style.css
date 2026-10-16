@@ -104,6 +104,40 @@ ul.rs{margin:6px 0;padding-left:18px;font-size:14px}textarea{width:100%;backgrou
 .dr-dialog .dr-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:12px}
 .dr-pill{display:inline-block;padding:1px 6px;border-radius:3px;font-size:11px;font-family:"Space Mono",monospace;background:rgba(118,143,178,.2);color:var(--tx);margin:2px}
 
+/* --- Isolated simulated transfer stream on the Knowledge Graph --- */
+.sim-controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+.sim-button{background:rgba(19,22,20,.7);color:var(--tx);border:1px solid var(--bd);border-radius:4px;padding:7px 12px;font:600 12px Outfit,system-ui,sans-serif;cursor:pointer}
+.sim-button:hover:not(:disabled){border-color:var(--gl);background:rgba(47,74,129,.4)}
+.sim-button:disabled{opacity:.45;cursor:not-allowed}
+.sim-button.sim-primary{background:var(--sb);border-color:var(--sb)}
+.sim-feed-wrap{margin-top:16px;border-top:1px solid var(--bd);padding-top:14px}
+.sim-feed-wrap h3{margin-bottom:10px}
+.sim-feed-head,.sim-event{display:grid;grid-template-columns:minmax(200px,1.6fr) minmax(105px,.7fr) minmax(115px,.8fr) minmax(180px,1.5fr);gap:10px;align-items:center}
+.sim-feed-head{padding:7px 10px;color:var(--mu);font:700 10px "Space Mono",monospace;text-transform:uppercase}
+.sim-feed{max-height:340px;overflow:auto;border:1px solid var(--bd);border-radius:4px}
+.sim-event{width:100%;text-align:left;background:rgba(19,22,20,.3);color:var(--tx);border:0;border-top:1px solid rgba(118,143,178,.18);padding:8px 10px;font:400 12px Outfit,system-ui,sans-serif;cursor:pointer}
+.sim-event:first-child{border-top:0}
+.sim-event:hover,.sim-event-selected{background:rgba(118,143,178,.15)}
+.sim-event.high{background:rgba(255,107,122,.1)}
+.sim-event.suspicious{background:rgba(227,182,96,.08)}
+.sim-event b{font:700 11px "Space Mono",monospace}
+.sim-event small{display:block;color:var(--mu);font-size:10px;overflow-wrap:anywhere}
+.sim-reason{color:var(--amb);font-size:11px}
+.sim-empty{padding:10px 12px;color:var(--mu);font-size:13px}
+#g .sim-edge{fill:none;stroke:#8fb0e8;stroke-width:2;stroke-dasharray:6 7;animation:sim-flow 1s linear infinite;opacity:.8}
+#g .sim-edge.sim-suspicious{stroke:var(--amb);stroke-width:2.5}
+#g .sim-edge.sim-high{stroke:var(--hi);stroke-width:3}
+#g .sim-edge.sim-selected{stroke-width:5;opacity:1;filter:drop-shadow(0 0 5px currentColor)}
+@keyframes sim-flow{to{stroke-dashoffset:-26}}
+#g .sim-packet{fill:#fff;filter:drop-shadow(0 0 5px var(--cy))}
+#g .sim-device circle{fill:#294678;stroke:#8fb0e8;stroke-width:2}
+#g .sim-device circle.sim-risk-medium{stroke:var(--amb);stroke-width:3}
+#g .sim-device circle.sim-risk-high{fill:rgba(255,107,122,.45);stroke:var(--hi);stroke-width:4}
+#g .sim-device text{font-size:9px}
+#g .sim-device .sim-user{font-size:9px;fill:var(--mu)}
+#g .sim-device .sim-score{font-size:8px;fill:var(--cy)}
+@media(max-width:800px){.sim-feed-head{display:none}.sim-event{grid-template-columns:1fr 1fr}.sim-reason{grid-column:1/-1}}
+
 /* ===================== AITHENA live layer ===================== */
 #aithena-livebar{position:fixed;left:0;right:0;bottom:0;z-index:90;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 16px;font:400 13px "Outfit",system-ui,sans-serif;border-top:1px solid var(--bd);backdrop-filter:blur(8px);flex-wrap:wrap}
 #aithena-livebar.demo{background:rgba(19,22,20,.92);color:var(--mu)}
