@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Live Wall · LeakLens</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@300;600;800&family=Outfit:wght@300;400;600&family=Space+Mono:wght@400;700&display=swap">
+<link rel="stylesheet" href="assets/css/style.css">
+<style>
+  body{padding:0;margin:0;min-height:100vh;background:var(--vb,#0c0f0e)}
+  .wall{max-width:1400px;margin:0 auto;padding:18px 18px 90px}
+  .wall-top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+  .wall-top h1{font:800 26px "Big Shoulders Display",sans-serif;letter-spacing:1px;margin:0;color:var(--tx)}
+  .wall-top .sub{font-size:12px;color:var(--mu)}
+  .modepill{font:700 11px "Space Mono",monospace;letter-spacing:1px;padding:3px 10px;border-radius:4px;border:1px solid currentColor}
+  .modepill.live{color:var(--ok)} .modepill.off{color:var(--hi)}
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:16px}
+  .kpi{border:1px solid var(--bd);border-radius:10px;padding:14px 16px;background:rgba(47,74,129,.12)}
+  .kpi b{display:block;font:700 30px "Space Mono",monospace;color:var(--tx);line-height:1.1}
+  .kpi span{font-size:12px;color:var(--mu)}
+  .kpi.ok b{color:var(--ok)} .kpi.amb b{color:var(--amb)} .kpi.hi b{color:var(--hi)}
+  .chartwrap{border:1px solid var(--bd);border-radius:10px;padding:14px 16px;margin-bottom:18px;background:rgba(0,0,0,.18)}
+  .chartwrap h3{margin:0 0 8px;font:600 13px "Outfit",sans-serif;color:var(--tx)}
+  #spark{width:100%;height:120px;display:block}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+  .card{border:1px solid var(--bd);border-radius:12px;padding:14px;background:linear-gradient(160deg,rgba(47,74,129,.16),rgba(20,36,61,.22));position:relative;overflow:hidden}
+  .card .edge{position:absolute;left:0;top:0;bottom:0;width:4px}
+  .card.s-live .edge{background:var(--ok)} .card.s-stale .edge{background:var(--amb)} .card.s-offline .edge{background:var(--hi)} .card.s-revoked .edge{background:var(--mu)}
+  .card .hd{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+  .card .did{font:700 18px "Space Mono",monospace;color:var(--tx)}
+  .card .who{font-size:12px;color:var(--mu);margin:2px 0 10px}
+  .stat{display:inline-flex;align-items:center;gap:6px;font:700 11px "Space Mono",monospace;letter-spacing:1px}
+  .dot{width:9px;height:9px;border-radius:50%;display:inline-block}
+  .s-live .dot{background:var(--ok);box-shadow:0 0 8px var(--ok)} .s-stale .dot{background:var(--amb)} .s-offline .dot{background:var(--hi)} .s-revoked .dot{background:var(--mu)}
+  .row{display:flex;justify-content:space-between;font-size:12px;padding:3px 0;border-bottom:1px dashed rgba(118,143,178,.18)}
+  .row:last-child{border-bottom:0}
+  .row b{color:var(--tx);font-weight:600}
+  .mu{color:var(--mu)}
+  .risk{font:700 12px "Space Mono",monospace;padding:2px 8px;border-radius:4px}
+  .risk.low{color:var(--ok);border:1px solid var(--ok)} .risk.medium{color:var(--amb);border:1px solid var(--amb)}
+  .risk.high,.risk.critical{color:var(--hi);border:1px solid var(--hi)}
+  .pills{display:flex;gap:4px;flex-wrap:wrap;margin-top:8px}
+  .pill{font:700 9px "Space Mono",monospace;padding:2px 6px;border-radius:4px;border:1px solid var(--bd);color:var(--mu)}
+  .pill.ok{color:var(--ok);border-color:var(--ok)} .pill.bad{color:var(--amb);border-color:var(--amb)}
+  .bars{display:flex;gap:2px;align-items:flex-end;height:30px;margin-top:10px}
+  .bars i{flex:1;background:var(--cy);border-radius:1px;opacity:.5;min-height:1px}
+  .connbar{position:fixed;left:0;right:0;bottom:0;background:rgba(17,32,26,.94);border-top:1px solid var(--bd);padding:8px 16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;z-index:50;font:400 13px "Outfit",sans-serif;color:var(--tx)}
+  .connbar input{background:#10131a;border:1px solid var(--bd);color:var(--tx);padding:5px 8px;border-radius:4px;font:400 12px "Space Mono",monospace}
+  .connbar button{background:var(--sb);border:1px solid var(--sb);color:#fff;padding:6px 12px;border-radius:4px;cursor:pointer;font:600 12px "Outfit",sans-serif}
+  .empty{color:var(--mu);text-align:center;padding:40px;border:1px dashed var(--bd);border-radius:10px}
+  .ret{color:var(--hi);font-size:12px}
+</style>
+</head><body data-page="wall">
+<div class="wall">
+  <div class="wall-top">
+    <div>
+      <h1>LEAK<span style="color:var(--cy)">LENS</span> · LIVE WALL</h1>
+      <div class="sub">Real-time view of all authorised laptops · metadata only · <a href="dashboard.html" style="color:var(--cy)">back to dashboard</a></div>
+    </div>
+    <div><span id="mode" class="modepill off">● OFFLINE</span></div>
+  </div>
+
+  <div class="kpis">
+    <div class="kpi ok"><b id="k-online">0</b><span>Online (LIVE)</span></div>
+    <div class="kpi amb"><b id="k-stale">0</b><span>Stale</span></div>
+    <div class="kpi hi"><b id="k-offline">0</b><span>Offline</span></div>
+    <div class="kpi"><b id="k-devices">0</b><span>Devices total</span></div>
+    <div class="kpi"><b id="k-fps">0</b><span>Flows / sec</span></div>
+    <div class="kpi"><b id="k-total">0</b><span>Live flows held</span></div>
+  </div>
+
+  <div class="chartwrap">
+    <h3>Flows per second — all devices (last 60s)</h3>
+    <canvas id="spark" width="1360" height="120"></canvas>
+  </div>
+
+  <div class="grid" id="grid"><div class="empty">Connecting… enter your server URL + admin token below if nothing appears.</div></div>
+</div>
+
+<div class="connbar">
+  <span id="connstate">Not connected</span>
+  <input id="url" type="text" placeholder="http://localhost:8443" size="22">
+  <input id="token" type="password" placeholder="admin token">
+  <button id="connect">Connect</button>
+  <span class="mu" id="hint">Token is kept only in this browser tab.</span>
+</div>
+
+<script>
+(function(){
+  'use strict';
+  var CFG_KEY='lldr_live_cfg';
+  var state={serverUrl:location.origin,adminToken:'',devices:{},flowsCount:{},serverTime:null,connected:false};
+  var es=null;
+  // flows-per-second ring buffer (60 one-second buckets)
+  var buckets=new Array(60).fill(0); var curSec=Math.floor(Date.now()/1000);
+
+  function loadCfg(){try{var r=sessionStorage.getItem(CFG_KEY);if(r){var c=JSON.parse(r);if(c.serverUrl)state.serverUrl=c.serverUrl;if(c.adminToken)state.adminToken=c.adminToken;}}catch(e){}}
+  function saveCfg(){try{sessionStorage.setItem(CFG_KEY,JSON.stringify({serverUrl:state.serverUrl,adminToken:state.adminToken}));}catch(e){}}
+  function esc(s){return s==null?'':String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+  function sp(d){return JSON.parse(d);}
+  function safe(d){try{return JSON.parse(d);}catch(e){return null;}}
+
+  function rollSecond(){
+    var now=Math.floor(Date.now()/1000);
+    while(curSec<now){curSec++;buckets.push(0);buckets.shift();}
+  }
+  function addFlows(n){rollSecond();buckets[buckets.length-1]+=n;}
+
+  function connect(){
+    if(es){try{es.close();}catch(e){}es=null;}
+    if(!state.serverUrl||!state.adminToken){setConn('Enter server URL + token');return;}
+    var url=state.serverUrl.replace(/\/$/,'')+'/api/v1/stream?token='+encodeURIComponent(state.adminToken);
+    try{es=new EventSource(url);}catch(e){setConn('EventSource failed');return;}
+    es.addEventListener('open',function(){state.connected=true;setConn('Connected');});
+    es.addEventListener('snapshot',function(ev){var d=safe(ev.data);if(!d)return;state.devices={};state.flowsCount={};(d.devices||[]).forEach(function(x){state.devices[x.device.deviceId]=applyRisk(x.device,x.risk);state.flowsCount[x.device.deviceId]=(x.flows||[]).length;});state.serverTime=d.serverTime;state.connected=true;render();});
+    es.addEventListener('registry',function(ev){var d=safe(ev.data);if(!d)return;(d.devices||[]).forEach(function(dev){var prev=state.devices[dev.deviceId];state.devices[dev.deviceId]=applyRisk(dev,dev.risk||(prev&&prev.risk));});state.serverTime=d.serverTime;render();});
+    es.addEventListener('telemetry',function(ev){var d=safe(ev.data);if(!d||!d.deviceId)return;state.devices[d.deviceId]=applyRisk(d.device||state.devices[d.deviceId]||{},d.risk);var n=(d.flows||[]).length;state.flowsCount[d.deviceId]=(state.flowsCount[d.deviceId]||0)+n;addFlows(n);render();});
+    es.addEventListener('device',function(ev){var d=safe(ev.data);if(!d||!d.device)return;state.devices[d.device.deviceId]=applyRisk(d.device,d.device.risk);render();});
+    es.addEventListener('error',function(){state.connected=false;setConn('Disconnected (retrying)');});
+    saveCfg();
+  }
+  function applyRisk(dev,risk){if(risk)dev.risk=risk;return dev;}
+
+  function setConn(t){document.getElementById('connstate').textContent=t;var m=document.getElementById('mode');if(state.connected){m.className='modepill live';m.textContent='● LIVE';}else{m.className='modepill off';m.textContent='● '+t.toUpperCase();}}
+
+  function devList(){return Object.keys(state.devices).map(function(k){return state.devices[k];}).sort(function(a,b){return (a.deviceId||'').localeCompare(b.deviceId||'');});}
+  function ago(ts){if(!ts)return 'never';var s=Math.round((Date.now()-ts)/1000);if(s<60)return s+'s';if(s<3600)return Math.round(s/60)+'m';return Math.round(s/3600)+'h';}
+
+  function render(){
+    var devs=devList();
+    var online=0,stale=0,offline=0,total=0;
+    devs.forEach(function(d){var cs=(d.connStatus||'OFFLINE');if(cs==='LIVE')online++;else if(cs==='STALE')stale++;else offline++;total+=state.flowsCount[d.deviceId]||0;});
+    document.getElementById('k-online').textContent=online;
+    document.getElementById('k-stale').textContent=stale;
+    document.getElementById('k-offline').textContent=offline;
+    document.getElementById('k-devices').textContent=devs.length;
+    document.getElementById('k-total').textContent=total;
+    rollSecond();
+    var fps=buckets[buckets.length-2]||0; // last completed second
+    document.getElementById('k-fps').textContent=fps;
+
+    var grid=document.getElementById('grid');
+    if(!devs.length){grid.innerHTML='<div class="empty">No devices yet. Start an agent on an enrolled laptop.</div>';return;}
+    grid.innerHTML=devs.map(function(d){
+      var cs=(d.connStatus||'OFFLINE').toLowerCase();
+      var risk=d.risk||{};var sev=(risk.severity||'Low');
+      var h=d.telemetryHealth||{};
+      var hp=['endpoint','flow','bytes'].map(function(k){var v=h[k];if(!v)return '';var ok=/ok/i.test(v);return '<span class="pill '+(ok?'ok':'bad')+'">'+k+':'+esc(String(v).toUpperCase())+'</span>';}).join('');
+      return '<div class="card s-'+cs+'"><div class="edge"></div>'+
+        '<div class="hd"><span class="did">'+esc(d.deviceId)+'</span>'+
+          '<span class="stat"><span class="dot"></span>'+esc((d.connStatus||'OFFLINE'))+'</span></div>'+
+        '<div class="who">'+esc(d.label||'')+' · '+esc(d.hostname||'?')+'</div>'+
+        '<div class="row"><span class="mu">Risk</span><span class="risk '+sev.toLowerCase()+'">'+esc(sev)+' '+(risk.score!=null?('('+risk.score+')'):'')+'</span></div>'+
+        '<div class="row"><span class="mu">Live flows</span><b>'+(state.flowsCount[d.deviceId]||0)+'</b></div>'+
+        '<div class="row"><span class="mu">Last seen</span><b>'+ago(d.lastSeen)+' ago</b></div>'+
+        '<div class="row"><span class="mu">Source IP</span><b>'+esc(d.lastIp||'?')+'</b></div>'+
+        '<div class="pills">'+hp+'</div>'+
+      '</div>';
+    }).join('');
+    drawSpark();
+  }
+
+  function drawSpark(){
+    var c=document.getElementById('spark');if(!c)return;var ctx=c.getContext('2d');
+    var W=c.width,H=c.height;ctx.clearRect(0,0,W,H);
+    var data=buckets.slice();var max=Math.max(1,Math.max.apply(null,data));
+    var step=W/data.length;
+    // grid line
+    ctx.strokeStyle='rgba(118,143,178,.18)';ctx.beginPath();ctx.moveTo(0,H-1);ctx.lineTo(W,H-1);ctx.stroke();
+    // area
+    ctx.beginPath();ctx.moveTo(0,H);
+    data.forEach(function(v,i){var x=i*step;var y=H-(v/max)*(H-10)-2;ctx.lineTo(x,y);});
+    ctx.lineTo(W,H);ctx.closePath();
+    var g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,'rgba(143,176,232,.45)');g.addColorStop(1,'rgba(143,176,232,0)');ctx.fillStyle=g;ctx.fill();
+    // line
+    ctx.beginPath();data.forEach(function(v,i){var x=i*step;var y=H-(v/max)*(H-10)-2;if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);});
+    ctx.strokeStyle='#8fb0e8';ctx.lineWidth=2;ctx.stroke();
+    // peak label
+    ctx.fillStyle='#9fb2cf';ctx.font='11px Space Mono, monospace';ctx.fillText('peak '+max+'/s',6,14);
+  }
+
+  // wire connect bar
+  function initBar(){
+    document.getElementById('url').value=state.serverUrl;
+    document.getElementById('token').value=state.adminToken;
+    document.getElementById('connect').onclick=function(){
+      state.serverUrl=document.getElementById('url').value.trim()||location.origin;
+      state.adminToken=document.getElementById('token').value.trim();
+      saveCfg();connect();
+    };
+  }
+
+  loadCfg();initBar();
+  if(state.serverUrl&&state.adminToken)connect(); else setConn('Enter token to connect');
+  setInterval(function(){rollSecond();render();},1000); // keep clock + chart moving
+})();
+</script>
+</body></html>

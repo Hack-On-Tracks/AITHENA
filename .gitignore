@@ -2,3 +2,5 @@
 agent-config.*.json
 !agent-config.example.json
 *.log
+__pycache__/
+*.py[cod]

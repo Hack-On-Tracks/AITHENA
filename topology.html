@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Live Topology · LeakLens</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@300;600;800&family=Outfit:wght@300;400;600&family=Space+Mono:wght@400;700&display=swap">
+<link rel="stylesheet" href="assets/css/style.css">
+<style>
+  body{margin:0;padding:0;background:var(--vb,#0c0f0e);min-height:100vh}
+  .tp{max-width:1400px;margin:0 auto;padding:16px 16px 88px}
+  .tp-top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+  .tp-top h1{font:800 24px "Big Shoulders Display",sans-serif;letter-spacing:1px;margin:0;color:var(--tx)}
+  .tp-top .sub{font-size:12px;color:var(--mu)}
+  .modepill{font:700 11px "Space Mono",monospace;letter-spacing:1px;padding:3px 10px;border-radius:4px;border:1px solid currentColor}
+  .modepill.live{color:var(--ok)} .modepill.off{color:var(--hi)}
+  .kpis{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+  .kpi{border:1px solid var(--bd);border-radius:8px;padding:8px 14px;background:rgba(47,74,129,.12)}
+  .kpi b{font:700 20px "Space Mono",monospace;color:var(--tx)} .kpi span{font-size:11px;color:var(--mu);margin-left:6px}
+  .kpi.ok b{color:var(--ok)} .kpi.hi b{color:var(--hi)}
+  .stage{display:grid;grid-template-columns:1fr 320px;gap:14px}
+  @media(max-width:900px){.stage{grid-template-columns:1fr}}
+  .graphbox{border:1px solid var(--bd);border-radius:12px;background:radial-gradient(ellipse at center,rgba(47,74,129,.14),rgba(12,16,15,.2));overflow:hidden;position:relative}
+  svg#net{width:100%;height:560px;display:block}
+  .edge{stroke-width:1.5;fill:none}
+  .edge.normal{stroke:rgba(143,176,232,.55)}
+  .edge.susp{stroke:var(--hi);stroke-dasharray:6 4}
+  .edge.d2d{stroke:var(--ok);stroke-width:2.5}
+  .edge.pulse{animation:dash 1s linear infinite}
+  @keyframes dash{to{stroke-dashoffset:-20}}
+  .ncircle{cursor:pointer}
+  .nlabel{font:700 11px "Space Mono",monospace;fill:var(--tx);pointer-events:none}
+  .nsub{font:400 9px "Outfit",sans-serif;fill:var(--mu);pointer-events:none}
+  .elabel{font:400 9px "Space Mono",monospace;fill:var(--mu);pointer-events:none}
+  .legend{position:absolute;left:12px;bottom:12px;display:flex;gap:12px;flex-wrap:wrap;font-size:11px;color:var(--mu);background:rgba(12,16,15,.6);padding:6px 10px;border-radius:6px;border:1px solid var(--bd)}
+  .legend b{display:inline-block;width:14px;height:0;border-top:3px solid;vertical-align:middle;margin-right:4px}
+  .side{border:1px solid var(--bd);border-radius:12px;padding:14px;background:rgba(20,36,61,.2)}
+  .side h3{margin:0 0 4px;font:700 15px "Space Mono",monospace;color:var(--tx)}
+  .side .hint{font-size:12px;color:var(--mu);margin:0 0 10px}
+  .frow{font-size:12px;padding:6px 0;border-bottom:1px dashed rgba(118,143,178,.18)}
+  .frow code{color:var(--cy)}
+  .badge{display:inline-block;font:700 9px "Space Mono",monospace;padding:1px 6px;border-radius:4px;border:1px solid currentColor;margin-left:4px}
+  .b-new{color:var(--amb)} .b-big{color:var(--hi)} .b-ok{color:var(--ok)}
+  .note{font-size:11px;color:var(--mu);border-left:3px solid var(--amb);padding:6px 8px;background:rgba(227,182,96,.08);margin-top:10px}
+  .connbar{position:fixed;left:0;right:0;bottom:0;background:rgba(17,32,26,.94);border-top:1px solid var(--bd);padding:8px 16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;z-index:50;font:400 13px "Outfit",sans-serif;color:var(--tx)}
+  .connbar input{background:#10131a;border:1px solid var(--bd);color:var(--tx);padding:5px 8px;border-radius:4px;font:400 12px "Space Mono",monospace}
+  .connbar button{background:var(--sb);border:1px solid var(--sb);color:#fff;padding:6px 12px;border-radius:4px;cursor:pointer}
+  .mu{color:var(--mu)}
+</style>
+</head><body data-page="topology">
+<div class="tp">
+  <div class="tp-top">
+    <div><h1>LEAK<span style="color:var(--cy)">LENS</span> · LIVE TOPOLOGY</h1>
+      <div class="sub">Observed network flows across authorised laptops · <a href="dashboard.html" style="color:var(--cy)">dashboard</a> · <a href="wall.html" style="color:var(--cy)">wall</a></div></div>
+    <span id="mode" class="modepill off">● OFFLINE</span>
+  </div>
+  <div class="kpis">
+    <div class="kpi ok"><b id="k-online">0</b><span>devices online</span></div>
+    <div class="kpi"><b id="k-ext">0</b><span>external endpoints</span></div>
+    <div class="kpi"><b id="k-edges">0</b><span>observed flows</span></div>
+    <div class="kpi hi"><b id="k-susp">0</b><span>suspicious edges</span></div>
+    <div class="kpi"><b id="k-fps">0</b><span>flows/sec</span></div>
+  </div>
+  <div class="stage">
+    <div class="graphbox">
+      <svg id="net" viewBox="0 0 1000 560" preserveAspectRatio="xMidYMid meet"></svg>
+      <div class="legend">
+        <span><b style="border-color:var(--cy)"></b>observed flow → endpoint</span>
+        <span><b style="border-color:var(--ok)"></b>device ↔ device (observed)</span>
+        <span><b style="border-color:var(--hi);border-top-style:dashed"></b>suspicious</span>
+      </div>
+    </div>
+    <div class="side" id="side">
+      <h3>Inspect</h3>
+      <p class="hint">Click a computer to see its observed connections and recent flows.</p>
+      <div class="note">Edges are drawn <b>only</b> from observed telemetry. A line between two of your computers appears only when one computer's own flow data shows a connection to the other's address — never inferred.</div>
+    </div>
+  </div>
+</div>
+<div class="connbar">
+  <span id="connstate">Not connected</span>
+  <input id="url" type="text" placeholder="http://localhost:8443" size="22">
+  <input id="token" type="password" placeholder="admin token">
+  <button id="connect">Connect</button>
+  <span class="mu">Token stays in this browser tab.</span>
+</div>
+<script>
+(function(){
+  'use strict';
+  var CFG_KEY='lldr_live_cfg';
+  var state={serverUrl:location.origin,adminToken:'',connected:false,devices:{},flows:{}};
+  var MAXF=120, es=null, selected=null;
+  var buckets=new Array(60).fill(0),curSec=Math.floor(Date.now()/1000);
+
+  function loadCfg(){try{var r=sessionStorage.getItem(CFG_KEY);if(r){var c=JSON.parse(r);if(c.serverUrl)state.serverUrl=c.serverUrl;if(c.adminToken)state.adminToken=c.adminToken;}}catch(e){}}
+  function saveCfg(){try{sessionStorage.setItem(CFG_KEY,JSON.stringify({serverUrl:state.serverUrl,adminToken:state.adminToken}));}catch(e){}}
+  function esc(s){return s==null?'':String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+  function safe(d){try{return JSON.parse(d);}catch(e){return null;}}
+  function roll(){var n=Math.floor(Date.now()/1000);while(curSec<n){curSec++;buckets.push(0);buckets.shift();}}
+  function addF(n){roll();buckets[buckets.length-1]+=n;}
+
+  function connect(){
+    if(es){try{es.close();}catch(e){}es=null;}
+    if(!state.serverUrl||!state.adminToken){setConn('Enter token');return;}
+    var url=state.serverUrl.replace(/\/$/,'')+'/api/v1/stream?token='+encodeURIComponent(state.adminToken);
+    try{es=new EventSource(url);}catch(e){setConn('EventSource failed');return;}
+    es.addEventListener('open',function(){state.connected=true;setConn('Connected');});
+    es.addEventListener('snapshot',function(ev){var d=safe(ev.data);if(!d)return;state.devices={};state.flows={};(d.devices||[]).forEach(function(x){state.devices[x.device.deviceId]=ar(x.device,x.risk);state.flows[x.device.deviceId]=(x.flows||[]).slice(-MAXF);});state.connected=true;render();});
+    es.addEventListener('registry',function(ev){var d=safe(ev.data);if(!d)return;(d.devices||[]).forEach(function(dev){var p=state.devices[dev.deviceId];state.devices[dev.deviceId]=ar(dev,dev.risk||(p&&p.risk));});render();});
+    es.addEventListener('telemetry',function(ev){var d=safe(ev.data);if(!d||!d.deviceId)return;state.devices[d.deviceId]=ar(d.device||state.devices[d.deviceId]||{},d.risk);var a=state.flows[d.deviceId]||(state.flows[d.deviceId]=[]);(d.flows||[]).forEach(function(f){a.push(f);});if(a.length>MAXF)a.splice(0,a.length-MAXF);addF((d.flows||[]).length);render();});
+    es.addEventListener('device',function(ev){var d=safe(ev.data);if(!d||!d.device)return;state.devices[d.device.deviceId]=ar(d.device,d.device.risk);render();});
+    es.addEventListener('error',function(){state.connected=false;setConn('Disconnected (retrying)');});
+    saveCfg();
+  }
+  function ar(dev,risk){if(risk)dev.risk=risk;return dev;}
+  function setConn(t){document.getElementById('connstate').textContent=t;var m=document.getElementById('mode');if(state.connected){m.className='modepill live';m.textContent='● LIVE';}else{m.className='modepill off';m.textContent='● '+t.toUpperCase();}}
+
+  function devList(){return Object.keys(state.devices).map(function(k){return state.devices[k];}).sort(function(a,b){return (a.deviceId||'').localeCompare(b.deviceId||'');});}
+
+  // Build graph model strictly from observed flows.
+  function buildModel(){
+    var devs=devList();
+    var ipToDev={}; devs.forEach(function(d){if(d.lastIp)ipToDev[d.lastIp]=d.deviceId;});
+    var nodes={}, edges={};
+    var CX=500,CY=270,RD=118;
+    devs.forEach(function(d,i){
+      var ang=(-90+i*(360/Math.max(1,devs.length)))*Math.PI/180;
+      nodes[d.deviceId]={id:d.deviceId,type:'device',label:d.deviceId,sub:d.label||'',status:d.connStatus||'OFFLINE',risk:d.risk,x:CX+RD*Math.cos(ang),y:CY+RD*Math.sin(ang),ang:ang};
+    });
+    // aggregate flows into edges; create endpoint nodes
+    devs.forEach(function(d){
+      var fl=state.flows[d.deviceId]||[];
+      var per={};
+      fl.forEach(function(f){
+        var destDev=ipToDev[f.dest]; // if dest is another registered device => device-device
+        var target=destDev&&destDev!==d.deviceId?destDev:('EP:'+f.dest);
+        var key=d.deviceId+'>'+target;
+        var e=per[key]||(per[key]={from:d.deviceId,to:target,isDev:!!(destDev&&destDev!==d.deviceId),conns:0,bytes:0,last:0,susp:false,port:f.destPort,proto:f.protocol,dest:f.dest});
+        e.conns+=f.connectionCount||1; if(f.bytesOut)e.bytes+=f.bytesOut; e.last=Math.max(e.last,f.ts||0);
+        if(f.destNovelty==='new'||(f.bytesOut&&f.bytesOut>300*1024*1024))e.susp=true;
+      });
+      Object.keys(per).forEach(function(k){
+        var e=per[k];
+        if(!e.isDev){ // ensure endpoint node exists
+          if(!nodes[e.to]) nodes[e.to]={id:e.to,type:'endpoint',label:e.dest,ext:true,conns:0};
+          nodes[e.to].conns+=e.conns;
+        }
+        edges[k]=e;
+      });
+    });
+    // place endpoint nodes radially near their source device angle
+    var epByDev={};
+    Object.keys(edges).forEach(function(k){var e=edges[k];if(!e.isDev)(epByDev[e.from]=epByDev[e.from]||[]).push(e.to);});
+    Object.keys(epByDev).forEach(function(dev){
+      var base=nodes[dev]?nodes[dev].ang:0; var list=epByDev[dev].filter(function(v,i,a){return a.indexOf(v)===i;});
+      var spread=Math.min(1.1,0.18*list.length);
+      list.forEach(function(epid,i){
+        var a=base+(list.length>1?(-spread/2+spread*(i/(list.length-1))):0);
+        var r=190+((i%3)*26);
+        if(nodes[epid]&&nodes[epid]._x==null){nodes[epid]._x=500+r*Math.cos(a);nodes[epid]._y=270+r*Math.sin(a);nodes[epid].x=nodes[epid]._x;nodes[epid].y=nodes[epid]._y;}
+      });
+    });
+    return {nodes:nodes,edges:edges,devs:devs};
+  }
+
+  var SVGNS='http://www.w3.org/2000/svg';
+  function el(n,a){var e=document.createElementNS(SVGNS,n);for(var k in a)e.setAttribute(k,a[k]);return e;}
+
+  function render(){
+    roll();
+    var m=buildModel();
+    var svg=document.getElementById('net');svg.innerHTML='';
+    var now=Date.now(); var suspCount=0, extCount=0, edgeCount=0;
+    // edges first
+    Object.keys(m.edges).forEach(function(k){
+      var e=m.edges[k]; var a=m.nodes[e.from], b=m.nodes[e.to]; if(!a||!b)return;
+      edgeCount++; if(e.susp)suspCount++;
+      var recent=(now-e.last)<6000;
+      var cls='edge '+(e.susp?'susp':(e.isDev?'d2d':'normal'))+(recent?' pulse':'');
+      var dim=selected&&selected!==e.from&&selected!==e.to;
+      var line=el('line',{x1:a.x,y1:a.y,x2:b.x,y2:b.y,class:cls,'stroke-width':Math.min(6,1.2+Math.log(1+e.conns)),opacity:dim?0.12:(recent?0.95:0.6)});
+      svg.appendChild(line);
+    });
+    // nodes
+    Object.keys(m.nodes).forEach(function(id){
+      var n=m.nodes[id];
+      var dim=selected&&id!==selected&&!connectedTo(m,selected,id);
+      if(n.type==='device'){
+        var ring={LIVE:'var(--ok)',STALE:'var(--amb)',OFFLINE:'var(--hi)',REVOKED:'var(--mu)'}[n.status]||'var(--mu)';
+        var g=el('g',{class:'ncircle',opacity:dim?0.3:1}); g.style.cursor='pointer';
+        g.appendChild(el('circle',{cx:n.x,cy:n.y,r:22,fill:'rgba(47,74,129,.5)',stroke:ring,'stroke-width':3}));
+        var sev=n.risk?(n.risk.severity||'Low'):'';
+        if(sev==='High'||sev==='Critical')g.appendChild(el('circle',{cx:n.x,cy:n.y,r:27,fill:'none',stroke:'var(--hi)','stroke-width':1,opacity:.6}));
+        var t1=el('text',{x:n.x,y:n.y+4,'text-anchor':'middle',class:'nlabel'});t1.textContent=n.label.replace('DEV-','D');g.appendChild(t1);
+        var t2=el('text',{x:n.x,y:n.y+36,'text-anchor':'middle',class:'nsub'});t2.textContent=(n.sub||'')+' · '+n.status;g.appendChild(t2);
+        g.addEventListener('click',function(){selected=(selected===id?null:id);render();renderSide(id);});
+        svg.appendChild(g);
+      } else {
+        extCount++;
+        var ge=el('g',{opacity:dim?0.2:0.9});
+        ge.appendChild(el('circle',{cx:n.x,cy:n.y,r:7,fill:'rgba(62,224,143,.18)',stroke:'var(--cy)','stroke-width':1.5}));
+        var te=el('text',{x:n.x,y:n.y-11,'text-anchor':'middle',class:'elabel'});te.textContent=n.label;ge.appendChild(te);
+        svg.appendChild(ge);
+      }
+    });
+    // kpis
+    document.getElementById('k-online').textContent=m.devs.filter(function(d){return d.connStatus==='LIVE';}).length;
+    document.getElementById('k-ext').textContent=extCount;
+    document.getElementById('k-edges').textContent=edgeCount;
+    document.getElementById('k-susp').textContent=suspCount;
+    document.getElementById('k-fps').textContent=buckets[buckets.length-2]||0;
+    if(selected&&state.devices[selected])renderSide(selected);
+  }
+  function connectedTo(m,sel,id){return Object.keys(m.edges).some(function(k){var e=m.edges[k];return (e.from===sel&&e.to===id)||(e.to===sel&&e.from===id);});}
+
+  function renderSide(id){
+    var d=state.devices[id]; if(!d)return;
+    var fl=(state.flows[id]||[]).slice().sort(function(a,b){return b.ts-a.ts;}).slice(0,14);
+    var rows=fl.map(function(f){
+      var b=f.bytesOut!=null?fmt(f.bytesOut):'n/a';
+      var badge=f.destNovelty==='new'?'<span class="badge b-new">NEW DEST</span>':(f.bytesOut&&f.bytesOut>300*1024*1024?'<span class="badge b-big">LARGE</span>':'<span class="badge b-ok">baseline</span>');
+      return '<div class="frow"><code>'+esc(f.dest)+'</code>:'+esc(f.destPort)+' · '+esc(f.protocol)+badge+'<br><span class="mu">×'+esc(f.connectionCount)+' conns · '+esc(f.durationSec!=null?f.durationSec+'s':'n/a')+' · '+b+' · '+new Date(f.ts).toLocaleTimeString()+'</span></div>';
+    }).join('');
+    var risk=d.risk||{};
+    document.getElementById('side').innerHTML='<h3>'+esc(d.deviceId)+' · '+esc(d.label||'')+'</h3>'+
+      '<p class="hint">'+esc(d.hostname||'?')+' · '+esc(d.connStatus||'')+' · risk '+esc(risk.severity||'?')+' ('+esc(risk.score!=null?risk.score:'?')+') · IP '+esc(d.lastIp||'?')+'</p>'+
+      (rows||'<p class="mu">No flows observed yet.</p>')+
+      '<div class="note">Showing this computer\'s own observed flows only. <a href="#" id="clrsel" style="color:var(--cy)">clear selection</a></div>';
+    var c=document.getElementById('clrsel'); if(c)c.onclick=function(ev){ev.preventDefault();selected=null;render();document.getElementById('side').innerHTML='<h3>Inspect</h3><p class="hint">Click a computer to see its observed connections.</p>';};
+  }
+  function fmt(b){if(b<1024)return b+' B';if(b<1048576)return (b/1024).toFixed(1)+' KB';if(b<1073741824)return (b/1048576).toFixed(1)+' MB';return (b/1073741824).toFixed(2)+' GB';}
+
+  function initBar(){document.getElementById('url').value=state.serverUrl;document.getElementById('token').value=state.adminToken;document.getElementById('connect').onclick=function(){state.serverUrl=document.getElementById('url').value.trim()||location.origin;state.adminToken=document.getElementById('token').value.trim();saveCfg();connect();};}
+
+  loadCfg();initBar();
+  if(state.serverUrl&&state.adminToken)connect(); else setConn('Enter token');
+  setInterval(function(){roll();render();},1000);
+})();
+</script>
+</body></html>

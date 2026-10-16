@@ -201,6 +201,12 @@
     var live = state.mode === 'live';
     demoPanels.forEach(function (el) { el.style.display = live ? 'none' : ''; });
     document.querySelectorAll('.aithena-live-panel').forEach(function (el) { el.style.display = live ? '' : 'none'; });
+    // Knowledge Graph page: in demo mode restore the original app.js graph; in
+    // live mode the live knowledge graph (backend-driven) takes over #g.
+    if (document.body.dataset.page === 'graph') {
+      if (!live && typeof window.gbuild === 'function') { try { window.gbuild(); } catch (e) {} }
+      else renderGraphLive();
+    }
   }
 
   // ---------------- the Live bar (all pages) ----------------
@@ -257,7 +263,7 @@
   }
 
   // ---------------- per-page live rendering ----------------
-  function renderAll() { renderBar(); renderInspector(); renderRegistry(); renderDashLive(); renderAlertsLive(); }
+  function renderAll() { renderBar(); renderInspector(); renderRegistry(); renderDashLive(); renderAlertsLive(); renderGraphLive(); }
 
   // Traffic page: Encrypted Flow Anomaly Inspector (all laptops, filter, status)
   var inspectorEl = null, inspectorFilter = 'ALL';
@@ -449,6 +455,204 @@
     if (s < 60) return s + 's ago';
     if (s < 3600) return Math.round(s / 60) + 'm ago';
     return Math.round(s / 3600) + 'h ago';
+  }
+
+  // ---------------- Knowledge Graph integration (teammate backend) ----------------
+  // Feeds REAL telemetry into the existing Python modules (TemporalCorrelationService
+  // + NetworkX build_knowledge_graph via /api/graph-correlate) and renders the
+  // returned graph into the existing #g SVG. No HTML/CSS change: reuses the graph's
+  // own node/edge styles. is_anomaly is sourced from the existing rule-based signals
+  // (destination novelty / large transfer), labelled as such — never fabricated.
+  var GRAPH_API_KEY = 'lldr_graph_api';
+  function graphApiBase() {
+    try { var v = sessionStorage.getItem(GRAPH_API_KEY); if (v) return v; } catch (e) {}
+    return 'http://127.0.0.1:5001';
+  }
+  // Team roster mapping (from the project's team dataset), matched by device label.
+  var ROSTER = {
+    'My-PC': ['Emil', 'Admin'], 'Friend-Laptop': ['Manasvi', 'Employer'],
+    'Laptop-3': ['Sameera', 'Insider'], 'Laptop-4': ['Keona', 'Outsider']
+  };
+  // Demo-only coordinates (clearly labelled). No authorised geo source is available,
+  // and the Knowledge Graph has no map view, so these are shown in the detail panel.
+  var DEMO_GEO = {
+    'Emil': [12.9716, 77.5946], 'Manasvi': [19.0760, 72.8777],
+    'Sameera': [13.0827, 80.2707], 'Keona': [28.6139, 77.2090]
+  };
+  function rosterFor(deviceId) {
+    var d = state.devices[deviceId];
+    var label = d && d.label ? d.label : deviceId;
+    var r = ROSTER[label];
+    return r ? { member: r[0], role: r[1], label: label } : { member: label, role: '', label: label };
+  }
+  function flowAnomalous(f) {
+    return f.destNovelty === 'new' || (f.bytesOut != null && f.bytesOut > 300 * 1024 * 1024);
+  }
+  var simOn = false;
+  function deviceByLabel(lbl) { return devicesList().filter(function (d) { return d.label === lbl; })[0]; }
+  function simRecords() {
+    // Clearly-labelled SIMULATION: Insider (Sameera / Laptop-3) repeatedly sends
+    // large data to the Outsider (Keona / Laptop-4). Not real telemetry — every
+    // record is tagged _sim so it renders with a SIM marker.
+    var ins = deviceByLabel('Laptop-3'), out = deviceByLabel('Laptop-4');
+    var insIp = (ins && ins.lastIp) || '10.10.10.3';
+    var outIp = (out && out.lastIp) || '10.10.10.4';
+    var insId = (ins && ins.deviceId) || 'DEV-003';
+    var now = Date.now(), recs = [];
+    for (var i = 0; i < 4; i++) {
+      recs.push({
+        event_id: 'SIM-exfil-' + i,
+        timestamp: new Date(now - (3 - i) * 12000).toISOString(),
+        source_ip: insIp, destination_ip: outIp, destination_port: 445,
+        device_id: insId, protocol: 'SMB (file share)', direction: 'outbound',
+        total_bytes: 2100000000 + i, total_packets: 180000 + i,
+        is_anomaly: true, _sim: true
+      });
+    }
+    return recs;
+  }
+  function buildRecords() {
+    var recs = [];
+    devicesList().forEach(function (d) {
+      (state.flowsByDevice[d.deviceId] || []).slice(-30).forEach(function (f, i) {
+        recs.push({
+          event_id: d.deviceId + '-' + f.ts + '-' + i,
+          timestamp: new Date(f.ts).toISOString(),
+          source_ip: d.lastIp || d.deviceId,
+          destination_ip: f.dest,
+          destination_port: f.destPort,
+          device_id: d.deviceId,
+          protocol: f.protocol || 'TCP',
+          direction: 'outbound',
+          total_bytes: f.bytesOut != null ? f.bytesOut : null,
+          total_packets: f.packetsOut != null ? f.packetsOut : null,
+          is_anomaly: !!flowAnomalous(f)
+        });
+      });
+    });
+    if (simOn) recs = recs.concat(simRecords());
+    return recs;
+  }
+  // which external-endpoint IPs are actually one of our own members
+  function ipMemberMap() {
+    var m = {};
+    devicesList().forEach(function (d) { if (d.lastIp) { var r = rosterFor(d.deviceId); m[d.lastIp] = r.member + ' (' + r.role + ')'; } });
+    var out = deviceByLabel('Laptop-4');
+    m[(out && out.lastIp) || '10.10.10.4'] = 'Keona (Outsider)';
+    return m;
+  }
+
+  var graphBusy = false, lastGraphPost = 0, lastGraphData = null, graphSel = null;
+  function renderGraphLive() {
+    if (document.body.dataset.page !== 'graph' || state.mode !== 'live') return;
+    var svg = document.querySelector('#g'); if (!svg) return;
+    var recs = buildRecords();
+    if (!recs.length) { drawGraph({ nodes: [], edges: [] }, []); return; }
+    var now = Date.now();
+    if (graphBusy || (now - lastGraphPost) < 2500) { if (lastGraphData) drawGraph(lastGraphData.graph, lastGraphData.correlations); return; }
+    graphBusy = true; lastGraphPost = now;
+    fetch(graphApiBase().replace(/\/$/, '') + '/api/graph-correlate', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ records: recs })
+    }).then(function (r) { return r.json(); }).then(function (d) {
+      graphBusy = false;
+      if (!d || !d.graph) return;
+      lastGraphData = d;
+      drawGraph(d.graph, d.correlations || []);
+    }).catch(function () {
+      graphBusy = false;
+      // Backend not reachable: show an honest note instead of silently faking a graph.
+      var dt = document.querySelector('#dt');
+      if (dt) dt.innerHTML = '<h3>Live Knowledge Graph</h3><p style="color:var(--mu);margin:0">Detection/correlation backend not reachable at <code>' + esc(graphApiBase()) + '</code>. Start it with <code>python -m backend.graph_api</code>. The graph shows real telemetry only — nothing is fabricated.</p>';
+    });
+  }
+
+  var SVGNS2 = 'http://www.w3.org/2000/svg';
+  function svgel(n, a) { var e = document.createElementNS(SVGNS2, n); for (var k in a) e.setAttribute(k, a[k]); return e; }
+  var GCOL = { device: '#5b8cff', event: '#dbe6f7', dest: '#3ee08f', alert: '#ff5a6e', correlation: '#ff5a6e' };
+
+  function drawGraph(graph, correlations) {
+    var svg = document.querySelector('#g'); if (!svg) return;
+    drawGraph._ipMem = ipMemberMap();
+    var nodes = graph.nodes || [], edges = graph.edges || [];
+    var byId = {}; nodes.forEach(function (n) { byId[n.id] = n; });
+    // classify + position
+    var devs = [], ips = [], flows = [], corrs = [];
+    nodes.forEach(function (n) {
+      if (n.node_type === 'entity' && n.id.indexOf('entity:device:') === 0) devs.push(n);
+      else if (n.node_type === 'entity') ips.push(n);
+      else if (n.node_type === 'flow') flows.push(n);
+      else if (n.node_type === 'correlation') corrs.push(n);
+    });
+    flows = flows.slice(0, 14); ips = ips.slice(0, 10);
+    var pos = {};
+    function place(list, x) { list.forEach(function (n, i) { pos[n.id] = { x: x, y: 40 + i * (320 / Math.max(1, list.length)) }; }); }
+    place(devs, 70); place(flows, 250); place(corrs, 410); place(ips, 580);
+    var shown = {}; Object.keys(pos).forEach(function (k) { shown[k] = true; });
+
+    var eh = edges.filter(function (e) { return shown[e.source] && shown[e.target]; }).map(function (e) {
+      var a = pos[e.source], b = pos[e.target];
+      var bad = /member_of|participates_in/.test(e.relationship || '');
+      return '<line class="edge' + (bad ? ' bad' : '') + '" x1="' + a.x + '" y1="' + a.y + '" x2="' + b.x + '" y2="' + b.y + '"/>';
+    }).join('');
+
+    function nodeSvg(n, kind) {
+      var p = pos[n.id]; if (!p) return '';
+      var label, r = 14, cls = kind;
+      if (kind === 'device') { var ro = rosterFor(n.id.replace('entity:device:', '')); label = ro.member + (ro.role ? ' (' + ro.role + ')' : ''); }
+      else if (kind === 'dest') { var ip = n.id.replace('entity:ip:', ''); label = (drawGraph._ipMem && drawGraph._ipMem[ip]) ? drawGraph._ipMem[ip] : ip; r = 11; }
+      else if (kind === 'flow') { label = ''; r = 6; }
+      else { label = (n.pattern || 'correlation'); r = 15; }
+      var fill = GCOL[kind === 'dest' ? 'dest' : (kind === 'correlation' ? 'correlation' : kind === 'flow' ? 'event' : 'device')];
+      return '<g class="node" data-nid="' + esc(n.id) + '" data-kind="' + kind + '" style="cursor:pointer">' +
+        '<circle class="' + (kind === 'correlation' ? 'pulse' : '') + '" cx="' + p.x + '" cy="' + p.y + '" r="' + r + '" fill="' + fill + '"/>' +
+        (label ? '<text x="' + p.x + '" y="' + (p.y + (kind === 'flow' ? 20 : 28)) + '">' + esc(label) + '</text>' : '') + '</g>';
+    }
+    svg.innerHTML = eh +
+      devs.map(function (n) { return nodeSvg(n, 'device'); }).join('') +
+      flows.map(function (n) { return nodeSvg(n, 'flow'); }).join('') +
+      corrs.map(function (n) { return nodeSvg(n, 'correlation'); }).join('') +
+      ips.map(function (n) { return nodeSvg(n, 'dest'); }).join('');
+
+    svg.querySelectorAll('.node').forEach(function (g) {
+      g.addEventListener('click', function () { graphDetail(byId[g.getAttribute('data-nid')], g.getAttribute('data-kind'), correlations); });
+    });
+    // summary into the details panel the first time
+    var dt = document.querySelector('#dt');
+    if (dt && !graphSel) {
+      dt.innerHTML = '<h3>Live Knowledge Graph</h3><p style="color:var(--mu);margin:0 0 6px">Built from real telemetry via the existing NetworkX + temporal-correlation modules. Red dashed links = temporal correlation. Click a node.</p>' +
+        '<p style="font-size:12px;color:var(--mu);margin:0 0 10px">' + devs.length + ' members · ' + ips.length + ' endpoints · ' + flows.length + ' flows shown · ' + corrs.length + ' correlation group(s).</p>' +
+        '<button id="aithena-sim-btn" class="b" style="width:100%;padding:8px;border:1px solid ' + (simOn ? 'var(--hi)' : 'var(--bd)') + ';background:' + (simOn ? 'rgba(255,107,122,.15)' : 'transparent') + ';color:var(--tx);border-radius:4px;cursor:pointer;font:600 12px Outfit,sans-serif">' + (simOn ? '■ Stop insider→outsider simulation' : '▶ Simulate: Insider (Sameera) → Outsider (Keona) exfiltration') + '</button>' +
+        (simOn ? '<div class="aithena-unknown" style="margin-top:8px">SIMULATION ON — injecting a flagged Sameera → Keona large transfer. This is NOT real telemetry; it is clearly-labelled demo data for the scenario.</div>' : '');
+      var sb = dt.querySelector('#aithena-sim-btn');
+      if (sb) sb.onclick = function () { simOn = !simOn; lastGraphPost = 0; graphSel = null; renderGraphLive(); };
+    }
+  }
+
+  function graphDetail(node, kind, correlations) {
+    var dt = document.querySelector('#dt'); if (!dt || !node) return;
+    graphSel = node.id;
+    if (kind === 'device') {
+      var ro = rosterFor(node.id.replace('entity:device:', ''));
+      var geo = DEMO_GEO[ro.member];
+      dt.innerHTML = '<h3>' + esc(ro.member) + '</h3><dl>' +
+        '<dt>role</dt><dd>' + esc(ro.role || '—') + '</dd>' +
+        '<dt>device</dt><dd>' + esc(ro.label) + '</dd>' +
+        '<dt>source ip</dt><dd>' + esc((state.devices[node.id.replace('entity:device:', '')] || {}).lastIp || '—') + '</dd>' +
+        (geo ? '<dt>location</dt><dd>' + geo[0] + ', ' + geo[1] + ' <span style="color:var(--amb)">(demo coordinates)</span></dd>' : '') +
+        '</dl><p style="font-size:11px;color:var(--mu)">A map/pin view is not part of the existing Knowledge Graph UI, so coordinates are shown here and are demo-only.</p>';
+    } else if (kind === 'correlation') {
+      var pat = node.pattern || 'correlation';
+      dt.innerHTML = '<h3>Temporal correlation</h3><dl>' +
+        '<dt>pattern</dt><dd>' + esc(pat) + '</dd>' +
+        '<dt>events</dt><dd>' + esc(node.event_count != null ? node.event_count : '—') + '</dd>' +
+        '<dt>evidence</dt><dd>' + esc(node.evidence_level || node.matched_rule || '—') + '</dd>' +
+        '<dt>window</dt><dd>' + esc(node.start_timestamp || '?') + ' → ' + esc(node.end_timestamp || '?') + '</dd>' +
+        '</dl><p style="font-size:11px;color:var(--mu)">From the existing TemporalCorrelationService over real event timestamps.</p>';
+    } else if (kind === 'dest') {
+      dt.innerHTML = '<h3>' + esc(node.id.replace('entity:ip:', '')) + '</h3><p style="color:var(--mu);margin:0">External endpoint observed in real telemetry.</p>';
+    } else {
+      dt.innerHTML = '<h3>Flow</h3><p style="color:var(--mu);margin:0"><code>' + esc(node.destination_ip || '') + ':' + esc(node.destination_port || '') + '</code> · ' + esc(node.protocol || node.Protocol || '') + (node.is_anomaly ? ' · <span style="color:var(--hi)">flagged (rule-based)</span>' : '') + '</p>';
+    }
   }
 
   // ---------------- init ----------------

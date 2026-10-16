@@ -49,7 +49,7 @@ function tbl(fresh){if(!$("#rw"))return;const q=$("#q").value.toLowerCase(),r=$(
 $("#rw").innerHTML=f.slice(0,30).map(e=>`<tr class="${e.risk} ${e.id==fresh?"new":""}"><td>${fa(e)}</td><td>${e.d}</td><td>${e.t}</td><td>${e.mb} MB</td><td>${Math.floor(e.dur/60)}m ${e.dur%60}s</td><td>${bg(e.risk)}</td></tr>`).join("")||`<tr><td colspan="6">No matching events</td></tr>`;$("#cn").textContent=f.length+" events match"}
 ["#q","#rkf","#tm"].forEach(s=>$(s)&&$(s).addEventListener("input",()=>tbl()));
 const col={device:"#5b8cff",event:"#dbe6f7",dest:"#3ee08f",alert:"#ff5a6e",incident:"#9db6dc"};let N=[],E=[],sel=null,gl=[];
-function gbuild(){if(!$("#g"))return;const w=+$("#ts").value;$("#tl").textContent=w+" h";N=[];E=[];
+function gbuild(){if(!$("#g"))return;if(window.AithenaLive&&AithenaLive.isLive&&AithenaLive.isLive())return;const w=+$("#ts").value;$("#tl").textContent=w+" h";N=[];E=[];
 D.forEach((d,i)=>N.push({id:d,k:"device",x:60,y:60+i*95,i:{Type:"Device",Flows:ev.filter(e=>e.d==d).length}}));
 T.forEach((d,i)=>N.push({id:d,k:"dest",x:580,y:30+i*57,i:{Type:"External destination",Used_by:new Set(ev.filter(e=>e.t==d).map(e=>e.d)).size+" device(s)"}}));
 const se=ev.filter(e=>e.risk!="normal"&&age(e)<=w).slice(0,6);
@@ -66,7 +66,7 @@ function float(){const t=performance.now()/1000;N.forEach(n=>{if(!n.el)return;n.
 const p=id=>N.find(n=>n.id==id);E.forEach((e,i)=>{const a=p(e[0]),b=p(e[1]),l=gl[i];if(!l||!a||!b||a.cx===undefined)return;l.setAttribute("x1",a.x+a.cx);l.setAttribute("y1",a.y+a.cy);l.setAttribute("x2",b.x+b.cx);l.setAttribute("y2",b.y+b.cy)})}
 if($("#ts"))$("#ts").addEventListener("input",gbuild);
 function toast(m){const t=$("#toast");t.textContent=m;t.classList.add("on");clearTimeout(toast.h);toast.h=setTimeout(()=>t.classList.remove("on"),4000)}
-setInterval(()=>{const e=mk(Date.now());if(rnd()>.55&&e.risk=="normal"){e.t=pick(BAD);e.mb=Math.round(400+rnd()*1600);e.risk=e.mb>1000?"high":"suspicious"}
+setInterval(()=>{if(window.AithenaLive&&AithenaLive.isLive&&AithenaLive.isLive())return;const e=mk(Date.now());if(rnd()>.55&&e.risk=="normal"){e.t=pick(BAD);e.mb=Math.round(400+rnd()*1600);e.risk=e.mb>1000?"high":"suspicious"}
 ev.unshift(e);total+=Math.round(40+rnd()*60);dash();tbl(e.id);tickOps();if(e.risk!="normal")gbuild();if(e.risk=="high")toast(`🚨 HIGH-RISK · ${e.d} → ${e.t} · ${e.mb} MB`);save()},2800);
 /* ===== Alerts, Incidents, Developer console ===== */
 const REV=["Anika Rao (SOC lead)","Dev Mehta (Analyst)","Sameera K. (Reviewer)"],STS=["New","Under Investigation","Resolved"];
